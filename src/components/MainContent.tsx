@@ -9,17 +9,25 @@ export const MainContent = () => {
   const [data, setData] = useState<DriverData[]>([]);
   const [weekNumber, setWeekNumber] = useState<number>(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setLoading(true);
+    setError(null);
+    
     try {
       const processedData = await processPdfData(file);
-      setData(processedData);
-    } catch (error) {
-      console.error('Klaida apdorojant failą:', error);
+      if (processedData.length === 0) {
+        setError('Nerasta galiojančių poilsio periodų PDF faile');
+      } else {
+        setData(processedData);
+      }
+    } catch (err) {
+      setError('Klaida apdorojant PDF failą. Įsitikinkite, kad įkeltas teisingas failas.');
+      console.error('Klaida:', err);
     } finally {
       setLoading(false);
     }
@@ -28,6 +36,10 @@ export const MainContent = () => {
   const handleExport = () => {
     if (data.length === 0) {
       alert('Nėra duomenų eksportavimui');
+      return;
+    }
+    if (weekNumber < 1 || weekNumber > 52) {
+      alert('Įveskite teisingą savaitės numerį (1-52)');
       return;
     }
     exportToExcel(data, weekNumber);
@@ -70,16 +82,34 @@ export const MainContent = () => {
         <div className="flex flex-wrap gap-4 mb-8">
           <button
             onClick={handleExport}
-            className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200"
+            disabled={data.length === 0}
+            className={`inline-flex items-center px-6 py-3 rounded-lg ${
+              data.length === 0 
+                ? 'bg-slate-300 cursor-not-allowed' 
+                : 'bg-blue-600 hover:bg-blue-700'
+            } text-white transition-colors duration-200`}
           >
             <FileSpreadsheet className="mr-2 h-5 w-5" />
             Eksportuoti į Excel
           </button>
-          <button className="inline-flex items-center px-6 py-3 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors duration-200">
+          <button 
+            disabled={data.length === 0}
+            className={`inline-flex items-center px-6 py-3 rounded-lg ${
+              data.length === 0 
+                ? 'bg-slate-300 cursor-not-allowed' 
+                : 'bg-emerald-600 hover:bg-emerald-700'
+            } text-white transition-colors duration-200`}
+          >
             <RefreshCw className="mr-2 h-5 w-5" />
             Atnaujinti Excel duomenis
           </button>
         </div>
+
+        {error && (
+          <div className="mb-8 p-4 bg-red-50 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-8">
